@@ -16,7 +16,7 @@ from six.moves import filter, map
 
 import re
 import collections
-from .exceptions import SphinxQLChainException, SphinxQLSyntaxException
+from .exceptions import SphinxQLSyntaxException
 
 
 RESERVED_KEYWORDS = ('AND', 'AS', 'ASC', 'AVG', 'BEGIN', 'BETWEEN', 'BY', 'CALL', 'COLLATION', 'COMMIT',
@@ -31,6 +31,7 @@ class SXQLSelect(object):
     _validator_exception_msg = 'Attributes are not defined or defined improperly.'
     _lex_string = 'SELECT {attrs}'
     _joiner_string = ', '
+    index = 1
 
     def __init__(self, init_attrs=None):
         init_attrs = init_attrs or ['*']
@@ -72,16 +73,12 @@ class SXQLSelect(object):
 
         return self
 
-    def __add__(self, other):
-        if isinstance(other, SXQLFrom):
-            return other
-        raise SphinxQLChainException()
-
 
 class SXQLFrom(object):
     _validator_exception_msg = 'Indexes are not defined or defined improperly.'
     _lex_string = 'FROM {indexes}'
     _joiner_string = ', '
+    index = 2
 
     def __init__(self):
         self._attrs = []
@@ -104,11 +101,6 @@ class SXQLFrom(object):
     def __call__(self, *attrs):
         self._attrs.extend(self._clean_attrs(attrs))
         return self
-
-    def __add__(self, other):
-        if isinstance(other, (SXQLWhere, SXQLGroupBy, SXQLOrder, SXQLWithinGroupOrderBy, SXQLLimit, SXQLOption)):
-            return other
-        raise SphinxQLChainException()
 
 
 class CommonSXQLWhereMixin(object):
@@ -209,6 +201,7 @@ class SXQLLimit(object):
     _unique_exception_msg = 'Only one LIMIT clause is allowed in the query.'
     _validator_exception_msg = 'OFFSET and LIMIT values are not defined or defined improperly.'
     _lex_string = "LIMIT {offset},{limit}"
+    index = 7
 
     def __init__(self, offset=None, limit=None):
         if offset and limit:
@@ -244,17 +237,13 @@ class SXQLLimit(object):
 
         return self
 
-    def __add__(self, other):
-        if isinstance(other, SXQLOption):
-            return other
-        raise SphinxQLChainException()
-
 
 class SXQLOrder(object):
     _attrs_validator_exception_msg = 'Attributes are not defined or defined improperly.'
     _direction_validator_exception_msg = 'Order direction can be ASC or DESC only.'
     _lex_string = 'ORDER BY {clauses}'
     _joiner_string = ', '
+    index = 6
 
     def __init__(self):
         self._attrs = []
@@ -281,17 +270,13 @@ class SXQLOrder(object):
         self._attrs.append('{attr} {direction}'.format(attr=attr, direction=direction.upper()))
         return self
 
-    def __add__(self, other):
-        if isinstance(other, (SXQLWithinGroupOrderBy, SXQLLimit, SXQLOption)):
-            return other
-        raise SphinxQLChainException()
-
 
 class SXQLGroupBy(object):
     _unique_exception_msg = 'Only one GROUP BY clause is allowed in the query.'
     _attr_validator_exception_msg = "Attribute name has to be a string. {0} is not."
     _no_attr_validator_exception_msg = 'No attribute name defined.'
     _lex_string = 'GROUP BY {attr}'
+    index = 4
 
     def __init__(self):
         self._attr = None
@@ -321,15 +306,11 @@ class SXQLGroupBy(object):
 
         return self
 
-    def __add__(self, other):
-        if isinstance(other, (SXQLOrder, SXQLWithinGroupOrderBy, SXQLLimit, SXQLOption)):
-            return other
-        raise SphinxQLChainException()
-
 
 class SXQLWithinGroupOrderBy(SXQLOrder):
     _unique_exception_msg = 'Only one WITHIN GROUP ORDER BY clause is allowed in the query'
     _lex_string = 'WITHIN GROUP ORDER BY {clauses}'
+    index = 5
 
     def __init__(self):
         self._is_called_once = False
@@ -342,17 +323,13 @@ class SXQLWithinGroupOrderBy(SXQLOrder):
 
         return super(SXQLWithinGroupOrderBy, self).__call__(*attrs)
 
-    def __add__(self, other):
-        if isinstance(other, (SXQLLimit, SXQLOption)):
-            return other
-        raise SphinxQLChainException()
-
 
 class SXQLWhere(object):
     _validator_exception_msg = 'WHERE clause is not defined.'
     _container_exception_msg = 'SXQLWhere container is for SXQLFilter and SXQLMatch instances only.'
     _lex_string = 'WHERE {clauses}'
     _joiner_string = ' AND '
+    index = 3
 
     def __init__(self):
         self._attrs = []
@@ -373,11 +350,6 @@ class SXQLWhere(object):
     def __call__(self, *attrs):
         self._attrs.extend(self._clean_attrs(attrs))
         return self
-
-    def __add__(self, other):
-        if isinstance(other, (SXQLGroupBy, SXQLOrder, SXQLWithinGroupOrderBy, SXQLLimit, SXQLOption)):
-            return other
-        raise SphinxQLChainException()
 
 
 class SXQLORFilter(object):
@@ -423,6 +395,7 @@ class SXQLOption(object):
     _key_exception_msg = 'Option name must be a string.'
     _lex_string = 'OPTION {options}'
     _joiner_string = ', '
+    index = 8
 
     def __init__(self):
         self._attrs = []
@@ -446,9 +419,6 @@ class SXQLOption(object):
             value = "'{0}'".format(value.replace("'", r"\'"))
         self._attrs.append('{0}={1}'.format(key, value))
         return self
-
-    def __add__(self, other):
-        raise SphinxQLChainException()
 
 
 class Q(CommonSXQLWhereMixin):

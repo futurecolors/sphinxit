@@ -148,6 +148,17 @@ class TestSQLProcessor(unittest.TestCase):
         self.assertEqual(self.SphinxSearch('index').option('retry_delay', 5).option('ranker', 'none')._ql(),
                          "SELECT * FROM index OPTION retry_delay=5, ranker='none'")
 
+    def test_lexemes_order(self):
+        query = (self.SphinxSearch('index').select('id').match('Hello').option('lalala', 15)
+                 .filter(Q(id__eq=1) | Q(id__gte=5)).filter(attr__eq=42)
+                 .order_by('id', 'desc').limit(0, 5).group_by('id'))
+        self.assertEqual(
+            query._ql(),
+            'SELECT id, (id=1) OR (id>=5) AS cnd FROM index '
+                "WHERE MATCH('Hello') AND cnd>0 AND attr=42 "
+                'GROUP BY id ORDER BY id DESC LIMIT 0,5 OPTION lalala=15',
+        )
+
 
 class TestSnippets(unittest.TestCase):
 

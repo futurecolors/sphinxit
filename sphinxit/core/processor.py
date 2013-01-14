@@ -11,11 +11,6 @@
 from __future__ import unicode_literals
 from __future__ import absolute_import
 
-import itertools
-import operator
-from six.moves import reduce
-
-from .exceptions import SphinxQLSyntaxException, SphinxQLChainException
 from .lexemes import (SXQLSelect, SXQLFrom, SXQLMatch, SXQLWhere, SXQLOrder, SXQLLimit, SXQLGroupBy,
                       SXQLWithinGroupOrderBy, SXQLFilter, SXQLORFilter, Count, SXQLOption)
 
@@ -344,25 +339,8 @@ class SphinxSearchActionMethods(SphinxBasicContainerMixin):
 class SphinxSearchBase(SphinxSearchActionMethods):
 
     def _sxql_dragon(self, set_of_lexemes):
-        """
-        Looks like magic but it's not. Each lexeme object has certain join rules
-        with another lexemes. Result container can contain several special SXQL objects
-        and we need to concatenate them in the right order. Only one combination is proper.
-        It works well, but I'll
-        """
-        sxql_permutations = itertools.permutations(set_of_lexemes)
-        bingo = None
-        for sxql in sxql_permutations:
-            try:
-                reduce(operator.add, sxql)  # if we can do that, the combination is correct
-                bingo = sxql
-            except SphinxQLChainException:
-                pass
-
-        if bingo:
-            return ' '.join([x.lex for x in bingo])  # this is our result SphinxQL expression
-        else:
-            raise SphinxQLSyntaxException('Cannot process correct SphinxQL expression')
+        ordered_lexemes = sorted(set_of_lexemes, key=lambda l: l.index)
+        return ' '.join(x.lex for x in ordered_lexemes)  # this is our result SphinxQL expression
 
     def _ql(self):
         """

@@ -17,9 +17,5 @@ class SphinxQLSyntaxException(Exception):
     pass
 
 
-class SphinxQLChainException(Exception):
-    pass
-
-
 class ImproperlyConfigured(Exception):
     pass
