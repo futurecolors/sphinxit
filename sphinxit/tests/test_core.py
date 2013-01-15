@@ -8,7 +8,7 @@ except ImportError:
 
 from ..core.lexemes import (SXQLSelect, SXQLFrom, SXQLLimit, SXQLOrder,
                             SXQLGroupBy, SXQLWithinGroupOrderBy,
-                            SXQLMatch, SXQLFilter, SXQLORFilter,
+                            SXQLMatch, SXQLFilter, SXQLORFilter, SXQLOption,
                             Q, Count, Avg, Min, Max, Sum, SXQLSnippets)
 from ..core.exceptions import SphinxQLSyntaxException
 
@@ -185,6 +185,23 @@ class TestSXQLMatch(unittest.TestCase):
     def test_wrong_query(self):
         sxql_inst = SXQLMatch()
         self.assertRaises(SphinxQLSyntaxException, sxql_inst, 42)
+
+
+class TestSXQLOption(unittest.TestCase):
+
+    def test_initial(self):
+        sxql_inst = SXQLOption()
+        sxql_inst('max_matches', 10000)
+        self.assertEqual(sxql_inst.lex, 'OPTION max_matches=10000')
+
+        sxql_inst('comment', "it's a comment")
+        self.assertEqual(sxql_inst.lex, r"OPTION max_matches=10000, comment='it\'s a comment'")
+
+    def test_wrong_attrs(self):
+        self.assertRaises(SphinxQLSyntaxException, SXQLOption(), 'name')
+        self.assertRaises(SphinxQLSyntaxException, SXQLOption(), 42, 42)
+        self.assertRaises(SphinxQLSyntaxException, SXQLOption())
+        self.assertRaises(SphinxQLSyntaxException, SXQLOption(), 'one', 'two', 'three')
 
 
 class TestQ(unittest.TestCase):

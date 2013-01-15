@@ -142,6 +142,12 @@ class TestSQLProcessor(unittest.TestCase):
             "SELECT id, (id=1) OR (id>=5) AS cnd FROM index WHERE MATCH('Hello') AND cnd>0",
         )
 
+    def test_options(self):
+        self.assertEqual(self.SphinxSearch('index').option('retry_delay', 5)._ql(),
+                         'SELECT * FROM index OPTION retry_delay=5')
+        self.assertEqual(self.SphinxSearch('index').option('retry_delay', 5).option('ranker', 'none')._ql(),
+                         "SELECT * FROM index OPTION retry_delay=5, ranker='none'")
+
 
 class TestSnippets(unittest.TestCase):
 

@@ -17,7 +17,7 @@ from six.moves import reduce
 
 from .exceptions import SphinxQLSyntaxException, SphinxQLChainException
 from .lexemes import (SXQLSelect, SXQLFrom, SXQLMatch, SXQLWhere, SXQLOrder, SXQLLimit, SXQLGroupBy,
-                      SXQLWithinGroupOrderBy, SXQLFilter, SXQLORFilter, Count)
+                      SXQLWithinGroupOrderBy, SXQLFilter, SXQLORFilter, Count, SXQLOption)
 
 
 class LexContainer(object):
@@ -35,6 +35,7 @@ class LexContainer(object):
         self.filters_sx = SXQLFilter()
         self.or_filters_sx = SXQLORFilter()
         self.within_group_order_by_sx = SXQLWithinGroupOrderBy()
+        self.option_sx = SXQLOption()
 
         # It's the minimum set of lexemes to make valid SphinxQL query
         # SELECT * FROM some_index
@@ -310,6 +311,32 @@ class SphinxSearchActionMethods(SphinxBasicContainerMixin):
             self._container.select_sx(Count(alias=alias))
             self._container.group_by_sx(attr)
             self._container.release_chain.add(self._container.group_by_sx)
+
+        return self
+
+    def option(self, *args):
+        """
+        This method allows you to control a number of per-query options::
+
+            Sphinxit('index').option('max_matches', 2000)
+
+        .. code-block:: sql
+
+            SELECT * FROM index OPTION max_matches=2000
+
+        You can specify multiple options by calling this method multiple times::
+
+            Sphinxit('index').option(max_matches, 2000).option(comment, 'hello')
+
+        .. code-block:: sql
+
+            SELECT * FROM index OPTION max_matches=2000, comment='hello'
+
+        :param args: option name and option value.
+        """
+        if args:
+            self._container.option_sx(*args)
+            self._container.release_chain.add(self._container.option_sx)
 
         return self
 

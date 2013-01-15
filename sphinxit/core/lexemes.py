@@ -106,7 +106,7 @@ class SXQLFrom(object):
         return self
 
     def __add__(self, other):
-        if isinstance(other, (SXQLWhere, SXQLGroupBy, SXQLOrder, SXQLWithinGroupOrderBy, SXQLLimit)):
+        if isinstance(other, (SXQLWhere, SXQLGroupBy, SXQLOrder, SXQLWithinGroupOrderBy, SXQLLimit, SXQLOption)):
             return other
         raise SphinxQLChainException()
 
@@ -204,11 +204,6 @@ class SXQLMatch(object):
 
         return self
 
-    def __add__(self, other):
-        if isinstance(other, (SXQLGroupBy, SXQLOrder, SXQLWithinGroupOrderBy, SXQLLimit)):
-            return other
-        raise SphinxQLChainException()
-
 
 class SXQLLimit(object):
     _unique_exception_msg = 'Only one LIMIT clause is allowed in the query.'
@@ -250,6 +245,8 @@ class SXQLLimit(object):
         return self
 
     def __add__(self, other):
+        if isinstance(other, SXQLOption):
+            return other
         raise SphinxQLChainException()
 
 
@@ -285,7 +282,7 @@ class SXQLOrder(object):
         return self
 
     def __add__(self, other):
-        if isinstance(other, (SXQLWithinGroupOrderBy, SXQLLimit)):
+        if isinstance(other, (SXQLWithinGroupOrderBy, SXQLLimit, SXQLOption)):
             return other
         raise SphinxQLChainException()
 
@@ -325,7 +322,7 @@ class SXQLGroupBy(object):
         return self
 
     def __add__(self, other):
-        if isinstance(other, (SXQLOrder, SXQLWithinGroupOrderBy, SXQLLimit)):
+        if isinstance(other, (SXQLOrder, SXQLWithinGroupOrderBy, SXQLLimit, SXQLOption)):
             return other
         raise SphinxQLChainException()
 
@@ -346,7 +343,7 @@ class SXQLWithinGroupOrderBy(SXQLOrder):
         return super(SXQLWithinGroupOrderBy, self).__call__(*attrs)
 
     def __add__(self, other):
-        if isinstance(other, SXQLLimit):
+        if isinstance(other, (SXQLLimit, SXQLOption)):
             return other
         raise SphinxQLChainException()
 
@@ -378,7 +375,7 @@ class SXQLWhere(object):
         return self
 
     def __add__(self, other):
-        if isinstance(other, (SXQLGroupBy, SXQLOrder, SXQLWithinGroupOrderBy, SXQLLimit)):
+        if isinstance(other, (SXQLGroupBy, SXQLOrder, SXQLWithinGroupOrderBy, SXQLLimit, SXQLOption)):
             return other
         raise SphinxQLChainException()
 
@@ -419,6 +416,39 @@ class SXQLFilter(CommonSXQLWhereMixin):
     def lex(self):
         lex = self._lex_string.format(clauses=self._joiner_string.join(self._attrs))
         return lex
+
+
+class SXQLOption(object):
+    _validator_exception_msg = 'Options are not defined or defined improperly.'
+    _key_exception_msg = 'Option name must be a string.'
+    _lex_string = 'OPTION {options}'
+    _joiner_string = ', '
+
+    def __init__(self):
+        self._attrs = []
+
+    @property
+    def lex(self):
+        return self._lex_string.format(options=self._joiner_string.join(self._attrs))
+
+    def _clean_attrs(self, attrs):
+        if len(attrs) != 2:
+            raise SphinxQLSyntaxException(self._validator_exception_msg)
+
+        key, value = attrs
+        if not isinstance(key, six.string_types):
+            raise SphinxQLSyntaxException(self._key_exception_msg)
+        return key, value
+
+    def __call__(self, *attrs):
+        key, value = self._clean_attrs(attrs)
+        if isinstance(value, six.string_types):
+            value = "'{0}'".format(value.replace("'", r"\'"))
+        self._attrs.append('{0}={1}'.format(key, value))
+        return self
+
+    def __add__(self, other):
+        raise SphinxQLChainException()
 
 
 class Q(CommonSXQLWhereMixin):
