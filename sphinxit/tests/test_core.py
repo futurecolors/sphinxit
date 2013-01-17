@@ -190,15 +190,20 @@ class TestSXQLMatch(unittest.TestCase):
 class TestQ(unittest.TestCase):
 
     def test_initial(self):
-        self.assertEqual(Q(id__eq=1).lex, "(id=1)")
+        self.assertEqual(Q(id__eq=1).lex, "id=1")
+        self.assertEqual(Q(id=1).lex, "id=1")
 
     def test_concat(self):
         q = Q(id__eq=1, id__gte=5)
-        self.assertIn(q.lex, ('(id=1 AND id>=5)', '(id>=5 AND id=1)'))
+        self.assertIn(q.lex, ('id=1 AND id>=5', 'id>=5 AND id=1'))
 
-    def test_negative_concat(self):
+    def test_negative_and(self):
         q = ~Q(id__eq=1, id__gte=5)
-        self.assertIn(q.lex, ('(id=1 OR id>=5)', '(id>=5 OR id=1)'))
+        self.assertIn(q.lex, ('id!=1 OR id<5', 'id<5 OR id!=1'))
+
+    def test_negative_or(self):
+        q = ~(Q(id__eq=1) | Q(id__gte=5) | ~Q(counter__eq=12))
+        self.assertEqual(q.lex, 'id!=1 AND id<5 AND counter=12')
 
 
 class TestSXQLORFilter(unittest.TestCase):
@@ -206,26 +211,25 @@ class TestSXQLORFilter(unittest.TestCase):
     def test_basics(self):
         self.assertEqual(
             SXQLORFilter()(Q(id__eq=1) | Q(id__gte=5)).lex,
-            '(id=1) OR (id>=5) AS cnd',
+            'id=1 OR id>=5 AS cnd',
         )
 
         self.assertEqual(
             SXQLORFilter()(Q(id__eq=1) & Q(id__gte=5)).lex,
-            '(id=1) AND (id>=5) AS cnd',
+            'id=1 AND id>=5 AS cnd',
         )
 
-        self.assertIn(
+        self.assertEqual(
             SXQLORFilter()(Q(id__eq=1) & (Q(id__gte=5) | Q(id__lt=4))).lex,
-            ("(id>=5) OR (id<4) AND (id=1) AS cnd",
-             "(id=1) AND (id>=5) OR (id<4) AS cnd")
+            "id=1 AND (id>=5 OR id<4) AS cnd"
         )
 
     def test_complex_expression(self):
         sxql_inst = SXQLORFilter()(Q(id__eq=1, id__gte=5) | ~Q(counter__lt=20, id__eq=42))
-        results = ('(id>=5 AND id=1) OR (id=42 OR counter<20) AS cnd',
-                   '(id=1 AND id>=5) OR (id=42 OR counter<20) AS cnd',
-                   '(id>=5 AND id=1) OR (counter<20 OR id=42) AS cnd',
-                   '(id=1 AND id>=5) OR (counter<20 OR id=42) AS cnd')
+        results = ('(id>=5 AND id=1) OR id!=42 OR counter>=20 AS cnd',
+                   '(id=1 AND id>=5) OR id!=42 OR counter>=20 AS cnd',
+                   '(id>=5 AND id=1) OR counter>=20 OR id!=42 AS cnd',
+                   '(id=1 AND id>=5) OR counter>=20 OR id!=42 AS cnd')
         self.assertIn(sxql_inst.lex, results)
 
     def test_wrong_attrs(self):
