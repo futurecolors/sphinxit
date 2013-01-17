@@ -10,12 +10,13 @@
 
 from __future__ import unicode_literals
 from __future__ import absolute_import
+import collections
+import operator
+import re
 
 import six
 from six.moves import filter, map
 
-import re
-import collections
 from .exceptions import SphinxQLSyntaxException
 
 
@@ -111,15 +112,17 @@ class CommonSXQLWhereMixin(object):
     _not_valid_range_msg = "Condition has to be a range of two integers. '{0}' is not."
     _attr_value_is_range_msg = 'Attribute value has to be an integer, not range.'
 
-    allowed_conditions_map = {'__eq': '{a}={v}',
-                              '__neq': '{a}!={v}',
-                              '__gt': '{a}>{v}',
-                              '__gte': '{a}>={v}',
-                              '__lt': '{a}<{v}',
-                              '__lte': '{a}<={v}',
-                              '__in': '{a} IN ({v})',
-                              '__between': '{a} BETWEEN {f_v} AND {s_v}',
-                              }
+    conditions = {
+        'eq':      ('{a}={v}', '{a}!={v}'),
+        'neq':     ('{a}!={v}', '{a}={v}'),
+        'gt':      ('{a}>{v}', '{a}<={v}'),
+        'gte':     ('{a}>={v}', '{a}<{v}'),
+        'lt':      ('{a}<{v}', '{a}>={v}'),
+        'lte':     ('{a}<={v}', '{a}>{v}'),
+        'in':      ('{a} IN ({v})', '{a} NOT IN ({v})'),
+        'between': ('{a} BETWEEN {v[0]} AND {v[1]}', None),
+    }
+    allowed_conditions = set(conditions)
 
     def _clean_rendered_attrs(self, k_attr, v_attr):
         if isinstance(v_attr, six.string_types):
@@ -128,39 +131,35 @@ class CommonSXQLWhereMixin(object):
             except ValueError:
                 raise SphinxQLSyntaxException(self._attr_value_is_string_msg)
 
-        if (isinstance(v_attr, collections.Iterable)
-            and not all(map(lambda x: isinstance(x, six.integer_types), v_attr))):
+        bits = k_attr.split('__')
+        if len(bits) == 1:
+            attr, ending = bits[0], 'eq'
+        elif len(bits) == 2:
+            attr, ending = bits
+        else:
+            raise SphinxQLSyntaxException(self._not_correct_attr_msg.format(k_attr))
+
+        if ending not in self.allowed_conditions:
+            raise SphinxQLSyntaxException(self._not_correct_attr_msg.format(k_attr))
+
+        if ending in ('between', 'in'):
             try:
                 v_attr = list(map(int, v_attr))
             except ValueError:
                 raise SphinxQLSyntaxException(self._not_integer_values_msg.format(v_attr))
+            except TypeError:
+                raise SphinxQLSyntaxException(self._not_iterable_values_msg.format(v_attr))
 
-        for ending in self.allowed_conditions_map.keys():
-            if not k_attr.endswith(ending):
-                continue
-
-            if ending not in ('__between', '__in') and isinstance(v_attr, collections.Iterable):
-                raise SphinxQLSyntaxException(self._attr_value_is_range_msg)
-
-            if ending in ('__between', '__in'):
-                if not isinstance(v_attr, collections.Iterable):
-                    raise SphinxQLSyntaxException(self._not_iterable_values_msg.format(v_attr))
-
-            a = k_attr[:k_attr.rindex(ending)]
-            v = v_attr
-
-            if ending == '__between':
+            if ending == 'between':
                 if len(v_attr) != 2:
                     raise SphinxQLSyntaxException(self._not_valid_range_msg.format(v_attr))
-                f_v, s_v = v_attr
-                return self.allowed_conditions_map[ending].format(a=a, f_v=f_v, s_v=s_v)
+            elif ending == 'in':
+                v_attr = ','.join(map(str, v_attr))
+        else:
+            if isinstance(v_attr, collections.Iterable):
+                raise SphinxQLSyntaxException(self._attr_value_is_range_msg)
 
-            elif ending == '__in':
-                v = ','.join(map(str, v_attr))
-
-            return self.allowed_conditions_map[ending].format(a=a, v=v)
-
-        raise SphinxQLSyntaxException(self._not_correct_attr_msg.format(k_attr))
+        return Param(attr, v_attr, ending)
 
 
 class SXQLMatch(object):
@@ -221,11 +220,10 @@ class SXQLLimit(object):
         if len(attrs) != 2:
             raise SphinxQLSyntaxException(self._validator_exception_msg)
 
-        if not all(map(lambda x: isinstance(x, six.integer_types), attrs)):
-            try:
-                attrs = map(int, attrs)
-            except ValueError:
-                raise SphinxQLSyntaxException(self._validator_exception_msg)
+        try:
+            attrs = map(int, attrs)
+        except ValueError:
+            raise SphinxQLSyntaxException(self._validator_exception_msg)
 
         return attrs
 
@@ -354,21 +352,19 @@ class SXQLWhere(object):
 
 class SXQLORFilter(object):
     _lex_string = '{clauses} AS cnd'
-    _joiner_string = ' AND '
 
     def __init__(self):
         self._attrs = []
 
     def __call__(self, *args):
         for arg in args:
-            if isinstance(arg, Q):
-                self._attrs.append(arg._q_buffer or arg.lex)
+            self._attrs.append(arg)
 
         return self
 
     @property
     def lex(self):
-        lex = self._lex_string.format(clauses=self._joiner_string.join(self._attrs))
+        lex = self._lex_string.format(clauses=reduce(operator.and_, self._attrs).lex)
         return lex
 
 
@@ -381,7 +377,8 @@ class SXQLFilter(CommonSXQLWhereMixin):
 
     def __call__(self, **kwargs):
         for k_attr, v_attr in kwargs.items():
-            self._attrs.add(self._clean_rendered_attrs(k_attr, v_attr))
+            param = self._clean_rendered_attrs(k_attr, v_attr)
+            self._attrs.add(param.inner_lex)
         return self
 
     @property
@@ -421,58 +418,74 @@ class SXQLOption(object):
         return self
 
 
-class Q(CommonSXQLWhereMixin):
-    _validator_exception_msg = 'Empty Q expression is not allowed.'
-    _lex_string = '({clauses})'
-    _and_joiner = ' AND '
-    _or_joiner = ' OR '
-
-    allowed_conditions_map = {'__eq': '{a}={v}',
-                              '__gt': '{a}>{v}',
-                              '__gte': '{a}>={v}',
-                              '__lt': '{a}<{v}',
-                              '__lte': '{a}<={v}',
-                              }
-
-    def __init__(self, **kwargs):
-        self._attrs = []
-        self._q_buffer = None
-        self._joiner_string = self._and_joiner
-
-        for k_attr, v_attr in kwargs.items():
-            self._attrs.append(self._clean_rendered_attrs(k_attr, v_attr))
-
-    def _pair_resolve(self, one, two):
-        if one._q_buffer:
-            join_pair = [one._q_buffer, two.lex]
-        elif two._q_buffer:
-            join_pair = [two._q_buffer, self.lex]
-        else:
-            join_pair = [one.lex, two.lex]
-
-        return join_pair
-
-    def __or__(self, other):
-        other._q_buffer = self._or_joiner.join(self._pair_resolve(self, other))
-        return other
-
-    def __and__(self, other):
-        other._q_buffer = self._and_joiner.join(self._pair_resolve(self, other))
-        return other
-
-    def __add__(self, other):
-        return self.__and__(other)
+class Param(object):
+    def __init__(self, attr, value, lookup):
+        self.attr = attr
+        self.value = value
+        self.lookup = lookup
+        self.templates = CommonSXQLWhereMixin.conditions[lookup]
+        self.negated = False
 
     def __invert__(self):
-        self._joiner_string = self._or_joiner
-        return self
+        param = Param(self.attr, self.value, self.lookup)
+        param.negated = not self.negated
+        return param
+
+    @property
+    def inner_lex(self):
+        template = self.templates[1] if self.negated else self.templates[0]
+        return template.format(a=self.attr, v=self.value)
+
+
+class Q(CommonSXQLWhereMixin):
+    _validator_exception_msg = 'Empty Q expression is not allowed.'
+    allowed_conditions = set(['eq', 'gt', 'gte', 'lt', 'lte'])
+
+    def __init__(self, **kwargs):
+        # params is a list of Param and Q objects
+        self.params = []
+        for k_attr, v_attr in kwargs.items():
+            self.params.append(self._clean_rendered_attrs(k_attr, v_attr))
+        self.conn = 'AND'
+
+    def _combine(self, conn, other):
+        q = Q()
+        q.conn = conn
+        if conn in (self.conn, other.conn):
+            if conn == self.conn:
+                q.params = self.params + [other]
+            else:
+                q.params = [self] + other.params
+        else:
+            q.params = [self, other]
+        return q
+
+    def __and__(self, other):
+        return self._combine('AND', other)
+
+    def __or__(self, other):
+        return self._combine('OR', other)
+
+    def __invert__(self):
+        q = Q()
+        q.conn = 'AND' if self.conn == 'OR' else 'OR'
+        q.params = [~param for param in self.params]
+        return q
 
     @property
     def lex(self):
-        if not self._attrs:
+        if not self.params:
             raise SphinxQLSyntaxException(self._validator_exception_msg)
 
-        return self._lex_string.format(clauses=self._joiner_string.join(self._attrs))
+        joiner = ' {0} '.format(self.conn)
+        parts = (param.inner_lex for param in self.params)
+        return joiner.join(parts)
+
+    @property
+    def inner_lex(self):
+        if len(self.params) == 1:
+            return self.lex
+        return '({0})'.format(self.lex)
 
 
 class AggregateObject(object):

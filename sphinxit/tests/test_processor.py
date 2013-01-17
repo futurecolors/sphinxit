@@ -103,8 +103,8 @@ class TestSQLProcessor(unittest.TestCase):
                          "SELECT * FROM index WHERE id>=1 AND counter IN (1,5)")
         self.assertIn(
             self.SphinxSearch('index').filter(Q(id__eq=1, id__gte=5))._ql(),
-            ("SELECT *, (id>=5 AND id=1) AS cnd FROM index WHERE cnd>0",
-             "SELECT *, (id=1 AND id>=5) AS cnd FROM index WHERE cnd>0"),
+            ("SELECT *, id>=5 AND id=1 AS cnd FROM index WHERE cnd>0",
+             "SELECT *, id=1 AND id>=5 AS cnd FROM index WHERE cnd>0"),
         )
         self.assertIn(
             (self.SphinxSearch('index').filter(Q(id__eq=1) | Q(id__gte=5))
@@ -112,15 +112,21 @@ class TestSQLProcessor(unittest.TestCase):
                                        .filter(id__eq=2)
                                        ._ql()),
             ["SELECT *, {or_q} AS cnd FROM index WHERE cnd>0 AND id=2".format(or_q=or_q)
-             for or_q in ("(id=1) OR (id>=5) AND (counter<42 AND id<20)", "(id=1) OR (id>=5) AND (id<20, counter<42)")]
+             for or_q in (
+                 '(id=1 OR id>=5) AND counter<42 AND id<20',
+                 '(id=1 OR id>=5) AND id<20 AND counter<42',
+                 'counter<42 AND (id=1 OR id>=5) AND id<20',
+                 'counter<42 AND id<20 AND (id=1 OR id>=5)',
+                 'id<20 AND (id=1 OR id>=5) AND counter<42',
+                 'id<20 AND counter<42 AND (id=1 OR id>=5)')]
         )
         self.assertIn(
             self.SphinxSearch('index').filter(~Q(id__eq=1, id__gte=5) & Q(counter__eq=1, counter__gte=100))._ql(),
             ["SELECT *, {or_q} AS cnd FROM index WHERE cnd>0".format(or_q=or_q)
-             for or_q in ("(id=1 OR id>=5) AND (counter=1 AND counter>=100)",
-                          "(id=1 OR id>=5) AND (counter>=100 AND counter=1)",
-                          "(id>=5 OR id=1) AND (counter=1 AND counter>=100)",
-                          "(id>=5 OR id=1) AND (counter>=100 AND counter=1)")]
+             for or_q in ("(id!=1 OR id<5) AND counter=1 AND counter>=100",
+                          "(id!=1 OR id<5) AND counter>=100 AND counter=1",
+                          "(id<5 OR id!=1) AND counter=1 AND counter>=100",
+                          "(id<5 OR id!=1) AND counter>=100 AND counter=1")]
         )
         self.assertIn(
             (self.SphinxSearch('index').filter(institute__eq=6506)
@@ -129,7 +135,7 @@ class TestSQLProcessor(unittest.TestCase):
                                        .filter(Q(id__eq=1, id__gte=5))
                                        ._ql()),
             ["SELECT *, COUNT(*) AS num, {or_q} AS cnd FROM index WHERE institute=6506 AND location=1565 AND cnd>0 GROUP BY location"
-            .format(or_q=or_q) for or_q in ("(id>=5 AND id=1)", "(id=1 AND id>=5)")]
+            .format(or_q=or_q) for or_q in ("id>=5 AND id=1", "id=1 AND id>=5")]
         )
 
     def test_match_with_filters(self):
@@ -139,7 +145,7 @@ class TestSQLProcessor(unittest.TestCase):
     def test_select_with_filters(self):
         self.assertEqual(
             self.SphinxSearch('index').select('id').match('Hello').filter(Q(id__eq=1) | Q(id__gte=5))._ql(),
-            "SELECT id, (id=1) OR (id>=5) AS cnd FROM index WHERE MATCH('Hello') AND cnd>0",
+            "SELECT id, id=1 OR id>=5 AS cnd FROM index WHERE MATCH('Hello') AND cnd>0",
         )
 
     def test_options(self):
