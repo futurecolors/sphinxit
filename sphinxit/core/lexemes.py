@@ -185,6 +185,7 @@ class SXQLMatch(object):
             raise SphinxQLSyntaxException(self._validator_exception_msg.format(query))
 
         if escape:
+            query = query.replace('\\', '')
             single_escape_chars_re = '|\\'.join(self._single_escape_chars)
             query = re.sub(single_escape_chars_re, lambda m: r'\{0}'.format(m.group()), query)
 
@@ -617,6 +618,7 @@ class SXQLSnippets(object):
         if not isinstance(attr, six.string_types):
             raise SphinxQLSyntaxException(self._not_string_validator_exception_msg.format(attr))
 
+        attr = attr.replace('\\', '')
         attr = re.sub("'", lambda m: r'\{0}'.format(m.group()), attr)
 
         return attr
