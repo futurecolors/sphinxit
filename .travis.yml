@@ -6,6 +6,6 @@ install:
   - python setup.py install
   - pip install coveralls
 script:
-  - coverage run --source=cleanweb setup.py -q test
+  - coverage run --source=sphinxit setup.py -q test
 after_success:
   - coveralls

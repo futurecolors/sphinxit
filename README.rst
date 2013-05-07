@@ -2,7 +2,7 @@ Meet Sphinxit!
 ==============
 
 .. image:: https://secure.travis-ci.org/futurecolors/sphinxit.png?branch=master
-    :target: https://travis-ci.org/futurecolors/django-geoip
+    :target: https://travis-ci.org/futurecolors/sphinxit
 
 .. image:: https://coveralls.io/repos/futurecolors/sphinxit/badge.png?branch=master
     :target: https://coveralls.io/r/futurecolors/sphinxit/
