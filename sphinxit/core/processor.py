@@ -321,11 +321,28 @@ class SphinxSearchActionMethods(SphinxBasicContainerMixin):
 
         You can specify multiple options by calling this method multiple times::
 
-            Sphinxit('index').option(max_matches, 2000).option(comment, 'hello')
+            Sphinxit('index').option('max_matches', 2000).option(ranker, 'bm25')
 
         .. code-block:: sql
 
-            SELECT * FROM index OPTION max_matches=2000, comment='hello'
+            SELECT * FROM index OPTION max_matches=2000, ranker='bm25'
+
+        Special cases of options, like field_weights are handled using dictionaries::
+
+             Sphinxit('index').option('field_weights', {'title':10, 'body':3})
+
+        .. code-block:: sql
+
+            SELECT * FROM index OPTION ranker=hello, field_weights=(title=10, body=3)
+
+        If you need to disable autoescape, use third boolean parameter set to True::
+
+             Sphinxit('index').option('ranker', expr('sum(lcs*user_weight)*1000+bm25')", True)
+
+        .. code-block:: sql
+
+            SELECT * FROM index OPTION expr('sum(lcs*user_weight)*1000+bm25')
+
 
         :param args: option name and option value.
         """
