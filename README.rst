@@ -1,7 +1,13 @@
 Meet Sphinxit!
 ==============
 
-.. image:: https://secure.travis-ci.org/semirook/sphinxit.png?branch=master
+.. image:: https://secure.travis-ci.org/futurecolors/sphinxit.png?branch=master
+    :target: https://travis-ci.org/futurecolors/django-geoip
+
+.. image:: https://coveralls.io/repos/futurecolors/sphinxit/badge.png?branch=master
+    :target: https://coveralls.io/r/futurecolors/sphinxit/
+
+This fork is maintained by Future Colors.
 
 **Sphinxit** is light and powerful **SphinxQL** query constructor. More, it is the set of helpers
 to make search with `Sphinx <http://sphinxsearch.com/>`_ easy to use in any kind of Python projects 
