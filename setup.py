@@ -16,10 +16,15 @@ setup(
     url='https://github.com/semirook/sphinxit',
     description='Lite and powerful SphinxQL query constructor',
     long_description=read(path.join(path.dirname(__file__), 'README.rst')),
+    tests_require=[
+        'nose >= 1.2',
+        'unittest2',
+    ],
     install_requires=[
         "six >= 1.1.0",
         "oursql >= 0.9.3",
-        ],
+    ],
+    test_suite='nose.collector',
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
