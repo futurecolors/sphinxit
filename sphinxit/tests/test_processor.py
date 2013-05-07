@@ -160,9 +160,9 @@ class TestSQLProcessor(unittest.TestCase):
                  .order_by('id', 'desc').limit(0, 5).group_by('id'))
         self.assertEqual(
             query._ql(),
-            'SELECT id, (id=1) OR (id>=5) AS cnd FROM index '
-                "WHERE MATCH('Hello') AND cnd>0 AND attr=42 "
-                'GROUP BY id ORDER BY id DESC LIMIT 0,5 OPTION lalala=15',
+            """SELECT id, id=1 OR id>=5 AS cnd """
+            """FROM index WHERE MATCH('Hello') AND cnd>0 AND attr=42 """
+            """GROUP BY id ORDER BY id DESC LIMIT 0,5 OPTION lalala=15""",
         )
 
 
