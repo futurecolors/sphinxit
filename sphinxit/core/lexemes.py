@@ -403,18 +403,23 @@ class SXQLOption(object):
         return self._lex_string.format(options=self._joiner_string.join(self._attrs))
 
     def _clean_attrs(self, attrs):
-        if len(attrs) != 2:
+        if len(attrs) == 2:
+            attrs = attrs + (False,)
+
+        if len(attrs) != 3:
             raise SphinxQLSyntaxException(self._validator_exception_msg)
 
-        key, value = attrs
+        key, value, is_raw = attrs
         if not isinstance(key, six.string_types):
             raise SphinxQLSyntaxException(self._key_exception_msg)
-        return key, value
+        return key, value, is_raw
 
     def __call__(self, *attrs):
-        key, value = self._clean_attrs(attrs)
-        if isinstance(value, six.string_types) and "'" in value:
+        key, value, is_raw = self._clean_attrs(attrs)
+        if isinstance(value, six.string_types) and not is_raw:
             value = "'{0}'".format(value.replace("'", r"\'"))
+        if isinstance(value, dict):
+            value = "({0})".format(', '.join('{0}={1}'.format(k, v) for k, v in value.items()))
         self._attrs.append('{0}={1}'.format(key, value))
         return self
 

@@ -201,7 +201,7 @@ class TestSXQLOption(unittest.TestCase):
         self.assertRaises(SphinxQLSyntaxException, SXQLOption(), 'name')
         self.assertRaises(SphinxQLSyntaxException, SXQLOption(), 42, 42)
         self.assertRaises(SphinxQLSyntaxException, SXQLOption())
-        self.assertRaises(SphinxQLSyntaxException, SXQLOption(), 'one', 'two', 'three')
+        self.assertRaises(SphinxQLSyntaxException, SXQLOption(), 'one', 'two', 'three', 'four')
 
 
 class TestQ(unittest.TestCase):

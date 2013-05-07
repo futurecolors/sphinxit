@@ -152,10 +152,14 @@ class TestSQLProcessor(unittest.TestCase):
         self.assertEqual(self.SphinxSearch('index').option('retry_delay', 5)._ql(),
                          'SELECT * FROM index OPTION retry_delay=5')
         self.assertEqual(self.SphinxSearch('index').option('retry_delay', 5).option('ranker', 'none')._ql(),
-                         "SELECT * FROM index OPTION retry_delay=5, ranker=none")
-        self.assertEqual(self.SphinxSearch('index').option('field_weights', '(title=10, body=3)')
-                         .option('ranker', 'bm25')._ql(),
-                         'SELECT * FROM index OPTION field_weights=(title=10, body=3), ranker=bm25')
+                         "SELECT * FROM index OPTION retry_delay=5, ranker='none'")
+        dict_ql = self.SphinxSearch('index').option('field_weights', {'title': 10, 'body': 3}).option('ranker', 'bm25')._ql()
+        assert (dict_ql == "SELECT * FROM index OPTION field_weights=(title=10, body=3), ranker='bm25'"
+               or dict_ql == "SELECT * FROM index OPTION field_weights=(body=3, title=10), ranker='bm25'")
+        self.assertEqual(self.SphinxSearch('index').option('ranker', 'bm25', False)._ql(),
+                         "SELECT * FROM index OPTION ranker='bm25'")
+        self.assertEqual(self.SphinxSearch('index').option('ranker', "expr('sum(lcs*user_weight)*1000+bm25')", True)._ql(),
+                         "SELECT * FROM index OPTION ranker=expr('sum(lcs*user_weight)*1000+bm25')")
 
     def test_lexemes_order(self):
         query = (self.SphinxSearch('index').select('id').match('Hello').option('lalala', 15)
