@@ -413,7 +413,7 @@ class SXQLOption(object):
 
     def __call__(self, *attrs):
         key, value = self._clean_attrs(attrs)
-        if isinstance(value, six.string_types):
+        if isinstance(value, six.string_types) and "'" in value:
             value = "'{0}'".format(value.replace("'", r"\'"))
         self._attrs.append('{0}={1}'.format(key, value))
         return self

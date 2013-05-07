@@ -152,7 +152,10 @@ class TestSQLProcessor(unittest.TestCase):
         self.assertEqual(self.SphinxSearch('index').option('retry_delay', 5)._ql(),
                          'SELECT * FROM index OPTION retry_delay=5')
         self.assertEqual(self.SphinxSearch('index').option('retry_delay', 5).option('ranker', 'none')._ql(),
-                         "SELECT * FROM index OPTION retry_delay=5, ranker='none'")
+                         "SELECT * FROM index OPTION retry_delay=5, ranker=none")
+        self.assertEqual(self.SphinxSearch('index').option('field_weights', '(title=10, body=3)')
+                         .option('ranker', 'bm25')._ql(),
+                         'SELECT * FROM index OPTION field_weights=(title=10, body=3), ranker=bm25')
 
     def test_lexemes_order(self):
         query = (self.SphinxSearch('index').select('id').match('Hello').option('lalala', 15)

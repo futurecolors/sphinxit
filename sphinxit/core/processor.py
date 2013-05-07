@@ -321,11 +321,11 @@ class SphinxSearchActionMethods(SphinxBasicContainerMixin):
 
         You can specify multiple options by calling this method multiple times::
 
-            Sphinxit('index').option(max_matches, 2000).option(comment, 'hello')
+            Sphinxit('index').option(ranker, 'bm25').option('field_weights', '(title=10, body=3)')
 
         .. code-block:: sql
 
-            SELECT * FROM index OPTION max_matches=2000, comment='hello'
+            SELECT * FROM index OPTION ranker=hello, field_weights=(title=10, body=3)
 
         :param args: option name and option value.
         """
