@@ -637,7 +637,7 @@ class SXQLSnippets(object):
         if isinstance(data, six.string_types):
             data = [data]
 
-        return map(lambda d: re.sub("'", lambda c: r'\{0}'.format(c.group()), d), data)
+        return [d.replace('\\', '').replace("'", "\\'") for d in data]
 
     def _clean_options(self, options):
         params_chain = []
