@@ -8,9 +8,9 @@ read = lambda filepath: codecs.open(filepath, 'r', 'utf-8').read()
 
 setup(
     name='sphinxit-fc',
-    version='0.3',
-    author='Roman Semirook',
-    author_email='semirook@gmail.com',
+    version='0.3.1',
+    author='Future Colors (fork), Roman Semirook (original)',
+    author_email='info@futurecolors.ru',
     packages=find_packages(),
     license='BSD',
     url='https://github.com/futurecolors/sphinxit',
