@@ -186,6 +186,11 @@ class TestSXQLMatch(unittest.TestCase):
         sxql_inst = SXQLMatch()
         self.assertRaises(SphinxQLSyntaxException, sxql_inst, 42)
 
+    def test_lt_gt_query(self):
+        sxql_inst = SXQLMatch()
+        sxql_inst('<>')
+        self.assertEqual(sxql_inst.lex, r"MATCH('{0}')".format(r'\\<>'))
+
 
 class TestSXQLOption(unittest.TestCase):
 

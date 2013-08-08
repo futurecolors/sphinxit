@@ -166,7 +166,7 @@ class SXQLMatch(object):
     _validator_exception_msg = "The query has to be a string. '{0}' is not."
     _empty_exception_msg = 'No query defined for full-text search.'
     _single_escape_chars = ["'", '+', '[', ']', '=', '*']
-    _double_escape_chars = ['@', '!', '^', '(', ')', '~', '-', '|', '/', '<<', '$', '"']
+    _double_escape_chars = ['@', '!', '^', '(', ')', '~', '-', '|', '/', '<', '$', '"']
     _lex_string = "MATCH('{query}')"
     _joiner_string = ' '
 
