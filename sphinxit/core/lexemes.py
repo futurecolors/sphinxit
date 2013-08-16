@@ -382,6 +382,10 @@ class SXQLFilter(CommonSXQLWhereMixin):
             self._attrs.add(param.inner_lex)
         return self
 
+    def exclude_param(self, k_attr, v_attr):
+        param = self._clean_rendered_attrs(k_attr, v_attr)
+        self._attrs.add((~param).inner_lex)
+
     @property
     def lex(self):
         lex = self._lex_string.format(clauses=self._joiner_string.join(self._attrs))

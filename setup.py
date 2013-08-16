@@ -8,7 +8,7 @@ read = lambda filepath: codecs.open(filepath, 'r', 'utf-8').read()
 
 setup(
     name='sphinxit-fc',
-    version='0.3.1',
+    version='0.3.2',
     author='Future Colors (fork), Roman Semirook (original)',
     author_email='info@futurecolors.ru',
     packages=find_packages(),

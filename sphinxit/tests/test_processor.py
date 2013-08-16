@@ -138,6 +138,22 @@ class TestSQLProcessor(unittest.TestCase):
             .format(or_q=or_q) for or_q in ("id>=5 AND id=1", "id=1 AND id>=5")]
         )
 
+    def test_exclude(self):
+        self.assertEqual(self.SphinxSearch('index').exclude(id__gte=1)._ql(),
+                         "SELECT * FROM index WHERE id<1")
+        self.assertEqual(self.SphinxSearch('index').exclude(id__gte=1, counter=6)._ql(),
+                         "SELECT *, id<1 OR counter!=6 AS cnd FROM index WHERE cnd>0")
+        self.assertIn(
+            self.SphinxSearch('index').exclude(id__gte=1).exclude(counter__in=[1, 5])._ql(),
+             ("SELECT * FROM index WHERE id<1 AND counter NOT IN (1,5)",
+             "SELECT * FROM index WHERE counter NOT IN (1,5) AND id<1")
+        )
+        self.assertIn(
+            self.SphinxSearch('index').exclude(Q(id__eq=1, id__gte=5))._ql(),
+            ("SELECT *, id<5 OR id!=1 AS cnd FROM index WHERE cnd>0",
+             "SELECT *, id!=1 OR id<5 AS cnd FROM index WHERE cnd>0"),
+        )
+
     def test_match_with_filters(self):
         self.assertEqual(self.SphinxSearch('index').match('Hello').filter(id__gte=1)._ql(),
                          "SELECT * FROM index WHERE MATCH('Hello') AND id>=1")

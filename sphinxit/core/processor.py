@@ -10,9 +10,11 @@
 
 from __future__ import unicode_literals
 from __future__ import absolute_import
+import operator
 
+from .exceptions import SphinxQLSyntaxException
 from .lexemes import (SXQLSelect, SXQLFrom, SXQLMatch, SXQLWhere, SXQLOrder, SXQLLimit, SXQLGroupBy,
-                      SXQLWithinGroupOrderBy, SXQLFilter, SXQLORFilter, Count, SXQLOption)
+                      SXQLWithinGroupOrderBy, SXQLFilter, SXQLORFilter, Count, SXQLOption, Q)
 
 
 class LexContainer(object):
@@ -190,16 +192,42 @@ class SphinxSearchActionMethods(SphinxBasicContainerMixin):
         :param args: one or more Q objects, separated with comma.
         :param kwargs: Sphinxit-specific filters, separated with comma.
         """
+        return self._filter_or_exclude(False, *args, **kwargs)
+
+    def exclude(self, *args, **kwargs):
+        return self._filter_or_exclude(True, *args, **kwargs)
+
+    def _add_q(self, *args):
+        self._container.or_filters_sx(*args)
+        self._container.select_sx(self._container.or_filters_sx)
+        self._container.where_sx(self._container.filters_sx(cnd__gt=0))  # simple hack for OR-filters
+        self._container.release_chain.add(self._container.where_sx)
+
+    def _filter_or_exclude(self, negate, *args, **kwargs):
         if args or kwargs:
             if args:  # args are Q-objects
-                self._container.or_filters_sx(*args)
-                self._container.select_sx(self._container.or_filters_sx)
-                self._container.where_sx(self._container.filters_sx(cnd__gt=0))  # simple hack for OR-filters
-                self._container.release_chain.add(self._container.where_sx)
+                if negate:
+                    q = reduce(operator.and_, args)
+                    self._add_q(~q)
+                else:
+                    self._add_q(*args)
             if kwargs:  # kwargs are some filter conditions
-                self._container.filters_sx(**kwargs)
-                self._container.where_sx(self._container.filters_sx)
-                self._container.release_chain.add(self._container.where_sx)
+                if negate:
+                    if len(kwargs) == 1: # Excluding more than one expression requires OR which isn't supported by WHERE.
+                        self._container.filters_sx.exclude_param(*kwargs.items()[0])
+                        self._container.where_sx(self._container.filters_sx)
+                        self._container.release_chain.add(self._container.where_sx)
+                    else:
+                        try:
+                            self._add_q(~Q(**kwargs))
+                        except SphinxQLSyntaxException:
+                            # Q-objects don't work with __in or __between conditions,
+                            # so excluding is not possible when there are two or more of them.
+                            raise SphinxQLSyntaxException('Cannon exclude these conditions due to Sphinx restrictions')
+                else:
+                    self._container.filters_sx(**kwargs)
+                    self._container.where_sx(self._container.filters_sx)
+                    self._container.release_chain.add(self._container.where_sx)
 
         return self
 
