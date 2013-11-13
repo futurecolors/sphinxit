@@ -113,8 +113,8 @@ class CommonSXQLWhereMixin(object):
     _attr_value_is_range_msg = 'Attribute value has to be an integer, not range.'
 
     conditions = {
-        'eq':      ('{a}={v}', '{a}!={v}'),
-        'neq':     ('{a}!={v}', '{a}={v}'),
+        'eq':      ('{a}={v}', '{a}<>{v}'),
+        'neq':     ('{a}<>{v}', '{a}={v}'),
         'gt':      ('{a}>{v}', '{a}<={v}'),
         'gte':     ('{a}>={v}', '{a}<{v}'),
         'lt':      ('{a}<{v}', '{a}>={v}'),

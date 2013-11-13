@@ -135,7 +135,7 @@ class TestSXQLFilter(unittest.TestCase):
         self.assertEqual(SXQLFilter()(id__between=[1, 5]).lex, 'id BETWEEN 1 AND 5')
         self.assertEqual(SXQLFilter()(e__eq=15).lex, 'e=15')
         self.assertEqual(SXQLFilter()(id__in=['2', '4', 5]).lex, 'id IN (2,4,5)')
-        self.assertEqual(SXQLFilter()(id__neq=3).lex, 'id!=3')
+        self.assertEqual(SXQLFilter()(id__neq=3).lex, 'id<>3')
         self.assertEqual(SXQLFilter()(id__between=['123', '345']).lex, 'id BETWEEN 123 AND 345')
 
         more_where_defs = SXQLFilter()(id__eq=1, att1__lt=1, att2__between=[1, 5])
@@ -221,11 +221,11 @@ class TestQ(unittest.TestCase):
 
     def test_negative_and(self):
         q = ~Q(id__eq=1, id__gte=5)
-        self.assertIn(q.lex, ('id!=1 OR id<5', 'id<5 OR id!=1'))
+        self.assertIn(q.lex, ('id<>1 OR id<5', 'id<5 OR id<>1'))
 
     def test_negative_or(self):
         q = ~(Q(id__eq=1) | Q(id__gte=5) | ~Q(counter__eq=12))
-        self.assertEqual(q.lex, 'id!=1 AND id<5 AND counter=12')
+        self.assertEqual(q.lex, 'id<>1 AND id<5 AND counter=12')
 
 
 class TestSXQLORFilter(unittest.TestCase):
@@ -248,10 +248,10 @@ class TestSXQLORFilter(unittest.TestCase):
 
     def test_complex_expression(self):
         sxql_inst = SXQLORFilter()(Q(id__eq=1, id__gte=5) | ~Q(counter__lt=20, id__eq=42))
-        results = ('(id>=5 AND id=1) OR id!=42 OR counter>=20 AS cnd',
-                   '(id=1 AND id>=5) OR id!=42 OR counter>=20 AS cnd',
-                   '(id>=5 AND id=1) OR counter>=20 OR id!=42 AS cnd',
-                   '(id=1 AND id>=5) OR counter>=20 OR id!=42 AS cnd')
+        results = ('(id>=5 AND id=1) OR id<>42 OR counter>=20 AS cnd',
+                   '(id=1 AND id>=5) OR id<>42 OR counter>=20 AS cnd',
+                   '(id>=5 AND id=1) OR counter>=20 OR id<>42 AS cnd',
+                   '(id=1 AND id>=5) OR counter>=20 OR id<>42 AS cnd')
         self.assertIn(sxql_inst.lex, results)
 
     def test_wrong_attrs(self):

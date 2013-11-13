@@ -127,7 +127,7 @@ class SphinxSearchActionMethods(SphinxBasicContainerMixin):
         Sphinxit                        SphinxQL
         ==============================  ============================
         attr__eq = value                attr > value
-        attr__neq = value               attr != value
+        attr__neq = value               attr <> value
         attr__gt = value                attr > value
         attr__gte = value               attr >= value
         attr__lt = value                attr < value
